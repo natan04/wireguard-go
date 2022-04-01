@@ -27,7 +27,22 @@ type StdNetBind struct {
 
 func NewStdNetBind() Bind { return &StdNetBind{} }
 
+func (bind *StdNetBind) PutEndpoint(endpoint Endpoint) {
+}
+
 type StdNetEndpoint netip.AddrPort
+
+func (e *StdNetEndpoint) IsEqual(endpoint Endpoint) bool {
+	addrPort := (*netip.AddrPort)(e)
+	addrPortParam := (*netip.AddrPort)(endpoint.(*StdNetEndpoint))
+	return addrPort.Port() == addrPortParam.Port() && addrPort.Addr().Compare(addrPortParam.Addr()) == 0
+}
+
+func (e *StdNetEndpoint) Copy() Endpoint {
+	addrPortString := (*netip.AddrPort)(e).String()
+	copyEndpoint, _ := netip.ParseAddrPort(addrPortString)
+	return (*StdNetEndpoint)(&copyEndpoint)
+}
 
 var (
 	_ Bind     = (*StdNetBind)(nil)

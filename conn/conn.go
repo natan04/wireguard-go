@@ -43,6 +43,9 @@ type Bind interface {
 
 	// ParseEndpoint creates a new endpoint from a string.
 	ParseEndpoint(s string) (Endpoint, error)
+
+	// PutEndpoint returns endpoint back to pool
+	PutEndpoint(endpoint Endpoint)
 }
 
 // BindSocketToInterface is implemented by Bind objects that support being
@@ -70,6 +73,8 @@ type Endpoint interface {
 	DstToBytes() []byte  // used for mac2 cookie calculations
 	DstIP() netip.Addr
 	SrcIP() netip.Addr
+	IsEqual(endpoint Endpoint) bool
+	Copy() Endpoint
 }
 
 var (

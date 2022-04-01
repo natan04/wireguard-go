@@ -77,6 +77,9 @@ type WinRingBind struct {
 	isOpen uint32
 }
 
+func (bind *WinRingBind) PutEndpoint(endpoint Endpoint) {
+}
+
 func NewDefaultBind() Bind { return NewWinRingBind() }
 
 func NewWinRingBind() Bind {
@@ -131,6 +134,17 @@ func (*WinRingBind) ParseEndpoint(s string) (Endpoint, error) {
 
 func (*WinRingEndpoint) ClearSrc() {}
 
+func (e *WinRingEndpoint) IsEqual(endpoint Endpoint) bool {
+	winEndpoint := endpoint.(*WinRingEndpoint)
+	return winEndpoint.family == e.family && winEndpoint.data == e.data
+}
+
+func (e *WinRingEndpoint) Copy() Endpoint {
+	return &WinRingEndpoint{
+		family: e.family,
+		data:   e.data,
+	}
+}
 func (e *WinRingEndpoint) DstIP() netip.Addr {
 	switch e.family {
 	case windows.AF_INET:
