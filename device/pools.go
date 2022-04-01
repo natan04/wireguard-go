@@ -70,6 +70,7 @@ func (device *Device) GetInboundElement() *QueueInboundElement {
 }
 
 func (device *Device) PutInboundElement(elem *QueueInboundElement) {
+	device.net.bind.PutEndpoint(elem.endpoint)
 	elem.clearPointers()
 	device.pool.inboundElements.Put(elem)
 }

@@ -271,7 +271,16 @@ func (peer *Peer) SetEndpointFromPacket(endpoint conn.Endpoint) {
 	if peer.disableRoaming {
 		return
 	}
+
+	peer.RLock()
+	if peer.endpoint.IsEqual(endpoint){
+		peer.RUnlock()
+		return
+	}
+
+	peer.RUnlock()
+
 	peer.Lock()
-	peer.endpoint = endpoint
+	peer.endpoint = endpoint.Copy()
 	peer.Unlock()
 }

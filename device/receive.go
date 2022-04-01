@@ -390,6 +390,7 @@ func (device *Device) RoutineHandshake(id int) {
 			peer.SendKeepalive()
 		}
 	skip:
+		device.net.bind.PutEndpoint(elem.endpoint)
 		device.PutMessageBuffer(elem.buffer)
 	}
 }

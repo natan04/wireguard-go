@@ -23,7 +23,18 @@ type ChannelBind struct {
 	target4, target6 ChannelEndpoint
 }
 
+func (c *ChannelBind) PutEndpoint(endpoint conn.Endpoint) {
+}
+
 type ChannelEndpoint uint16
+
+func (c ChannelEndpoint) IsEqual(endpoint conn.Endpoint) bool {
+	return c == endpoint.(ChannelEndpoint)
+}
+
+func (c ChannelEndpoint) Copy() conn.Endpoint {
+	return c
+}
 
 var (
 	_ conn.Bind     = (*ChannelBind)(nil)

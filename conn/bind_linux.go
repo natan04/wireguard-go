@@ -38,6 +38,23 @@ func (endpoint *LinuxSocketEndpoint) Src4() *ipv4Source         { return endpoin
 func (endpoint *LinuxSocketEndpoint) Dst4() *unix.SockaddrInet4 { return endpoint.dst4() }
 func (endpoint *LinuxSocketEndpoint) IsV6() bool                { return endpoint.isV6 }
 
+func (endpoint *LinuxSocketEndpoint) IsEqual(ep Endpoint) bool {
+	// Protect from mutable sendmsg
+	endpoint.mu.Lock()
+	defer endpoint.mu.Unlock()
+
+	linuxEp := ep.(*LinuxSocketEndpoint)
+	return endpoint.dst == linuxEp.dst && endpoint.src == linuxEp.src
+}
+
+func (endpoint *LinuxSocketEndpoint) Copy() Endpoint {
+	return &LinuxSocketEndpoint{
+		mu:   sync.Mutex{},
+		dst:  endpoint.dst,
+		src:  endpoint.src,
+		isV6: endpoint.isV6,
+	}
+}
 func (endpoint *LinuxSocketEndpoint) src4() *ipv4Source {
 	return (*ipv4Source)(unsafe.Pointer(&endpoint.src[0]))
 }
@@ -58,13 +75,28 @@ func (endpoint *LinuxSocketEndpoint) dst6() *unix.SockaddrInet6 {
 type LinuxSocketBind struct {
 	// mu guards sock4 and sock6 and the associated fds.
 	// As long as someone holds mu (read or write), the associated fds are valid.
-	mu    sync.RWMutex
-	sock4 int
-	sock6 int
+	mu             sync.RWMutex
+	sock4          int
+	sock6          int
+	epElementsPool sync.Pool
 }
 
-func NewLinuxSocketBind() Bind { return &LinuxSocketBind{sock4: -1, sock6: -1} }
-func NewDefaultBind() Bind     { return NewLinuxSocketBind() }
+func (bind *LinuxSocketBind) GetEndpoint() *LinuxSocketEndpoint {
+	return bind.epElementsPool.Get().(*LinuxSocketEndpoint)
+}
+
+func (bind *LinuxSocketBind) PutEndpoint(endpoint Endpoint) {
+	bind.epElementsPool.Put(endpoint)
+}
+
+func NewLinuxSocketBind() Bind {
+	return &LinuxSocketBind{sock4: -1, sock6: -1,
+		epElementsPool: sync.Pool{New: func() interface{} {
+			return new(LinuxSocketEndpoint)
+		}}}
+}
+
+func NewDefaultBind() Bind { return NewLinuxSocketBind() }
 
 var (
 	_ Endpoint = (*LinuxSocketEndpoint)(nil)
@@ -224,14 +256,14 @@ func (bind *LinuxSocketBind) Close() error {
 }
 
 func (bind *LinuxSocketBind) receiveIPv4(buf []byte) (int, Endpoint, error) {
+	end := bind.GetEndpoint()
 	bind.mu.RLock()
 	defer bind.mu.RUnlock()
 	if bind.sock4 == -1 {
 		return 0, nil, net.ErrClosed
 	}
-	var end LinuxSocketEndpoint
-	n, err := receive4(bind.sock4, buf, &end)
-	return n, &end, err
+	n, err := receive4(bind.sock4, buf, end)
+	return n, end, err
 }
 
 func (bind *LinuxSocketBind) receiveIPv6(buf []byte) (int, Endpoint, error) {
@@ -448,11 +480,12 @@ func send4(sock int, end *LinuxSocketEndpoint, buff []byte) error {
 	// clear src and retry
 
 	if err == unix.EINVAL {
-		end.ClearSrc()
+		// clear source writing to source ip that can collide with isEqual read. this is a rare execution code, so we will just
+		// create a copy and use it instead. (avoid write)
+		newEndpoint := end.Copy().(*LinuxSocketEndpoint)
+		newEndpoint.ClearSrc()
 		cmsg.pktinfo = unix.Inet4Pktinfo{}
-		end.mu.Lock()
-		_, err = unix.SendmsgN(sock, buff, (*[unsafe.Sizeof(cmsg)]byte)(unsafe.Pointer(&cmsg))[:], end.dst4(), 0)
-		end.mu.Unlock()
+		_, err = unix.SendmsgN(sock, buff, (*[unsafe.Sizeof(cmsg)]byte)(unsafe.Pointer(&cmsg))[:], newEndpoint.dst4(), 0)
 	}
 
 	return err
