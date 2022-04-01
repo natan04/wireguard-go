@@ -82,7 +82,6 @@ func (bind *WinRingBind) PutEndpoint(endpoint Endpoint) {
 
 func NewDefaultBind() Bind { return NewWinRingBind() }
 
-
 func NewWinRingBind() Bind {
 	if !winrio.Initialize() {
 		return NewStdNetBind()

@@ -55,6 +55,7 @@ func (endpoint *LinuxSocketEndpoint) Copy() Endpoint {
 		isV6: endpoint.isV6,
 	}
 }
+
 func (endpoint *LinuxSocketEndpoint) src4() *ipv4Source {
 	return (*ipv4Source)(unsafe.Pointer(&endpoint.src[0]))
 }

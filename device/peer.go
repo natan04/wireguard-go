@@ -273,7 +273,7 @@ func (peer *Peer) SetEndpointFromPacket(endpoint conn.Endpoint) {
 	}
 
 	peer.RLock()
-	if peer.endpoint.IsEqual(endpoint){
+	if peer.endpoint.IsEqual(endpoint) {
 		peer.RUnlock()
 		return
 	}

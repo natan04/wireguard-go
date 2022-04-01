@@ -74,7 +74,8 @@ type Endpoint interface {
 	DstIP() netip.Addr
 	SrcIP() netip.Addr
 	IsEqual(endpoint Endpoint) bool
-	Copy() Endpoint}
+	Copy() Endpoint
+}
 
 var (
 	ErrBindAlreadyOpen   = errors.New("bind is already open")
